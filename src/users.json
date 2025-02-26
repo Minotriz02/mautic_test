@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Carlos",
+    "last_name": "Gómez",
+    "phone_mobile": "3001234567",
+    "mail": "test1@mail.com",
+    "forecast_bulletin": true,
+    "clima_bulletin": false,
+    "primary_address_city": "Bogotá, Colombia"
+  },
+  {
+    "name": "María",
+    "last_name": "Rodríguez",
+    "phone_mobile": "3209876543",
+    "mail": "test2@mail.com",
+    "forecast_bulletin": false,
+    "clima_bulletin": true,
+    "primary_address_city": "Medellín, Colombia"
+  },
+  {
+    "name": "Andrés",
+    "last_name": "Pérez",
+    "phone_mobile": "3105678945",
+    "mail": "test3@mail.com",
+    "forecast_bulletin": true,
+    "clima_bulletin": true,
+    "primary_address_city": "Cali, Colombia"
+  },
+  {
+    "name": "Lucía",
+    "last_name": "Ramírez",
+    "phone_mobile": "3134567890",
+    "mail": "test4@mail.com",
+    "forecast_bulletin": false,
+    "clima_bulletin": false,
+    "primary_address_city": "Barranquilla, Colombia"
+  },
+  {
+    "name": "José",
+    "last_name": "Martínez",
+    "phone_mobile": "3004561237",
+    "mail": "test5@mail.com",
+    "forecast_bulletin": true,
+    "clima_bulletin": false,
+    "primary_address_city": "Cartagena, Colombia"
+  },
+  {
+    "name": "Ana",
+    "last_name": "Lopez",
+    "phone_mobile": "3167890452",
+    "mail": "sebaslopezastu08@gmail.com",
+    "forecast_bulletin": false,
+    "clima_bulletin": true,
+    "primary_address_city": "Bogotá, Colombia"
+  }
+]
