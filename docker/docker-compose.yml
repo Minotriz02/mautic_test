@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mautic:
+    image: mautic/mautic:latest
+    container_name: mautic
+    ports:
+      - "8080:80"  # Accede a Mautic desde http://localhost:8080
+    environment:
+      MAUTIC_DB_HOST: db
+      MAUTIC_DB_USER: mautic
+      MAUTIC_DB_PASSWORD: mautic
+      MAUTIC_DB_NAME: mautic
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    container_name: mautic-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mautic
+      MYSQL_USER: mautic
+      MYSQL_PASSWORD: mautic
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
