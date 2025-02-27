@@ -1,10 +1,11 @@
 import json
 import requests
+import urllib.parse
 
 # Configuración de la API de Mautic
 MAUTIC_BASE_URL = 'http://localhost:8080'  # URL de tu instancia de Mautic
-MAUTIC_USERNAME = 'mautic'                 # Usuario configurado para la API en Mautic
-MAUTIC_PASSWORD = 'Khiara1919;'            # Contraseña para la API
+MAUTIC_USERNAME = 'mautic'  # Usuario configurado para la API en Mautic
+MAUTIC_PASSWORD = 'Khiara1919;'  # Contraseña para la API
 
 # Mapeo de campos: clave = campo en Mautic, valor = campo en el JSON
 field_mapping = {
@@ -20,17 +21,21 @@ field_mapping = {
 def get_contact_by_phone(phone):
     """
     Busca un contacto en Mautic utilizando el campo 'mobile' (celular).
-    Se utiliza el parámetro 'search' de la API para filtrar por mobile.
+    Se utiliza el parámetro 'where' de la API para filtrar por mobile.
     """
-    url = f"{MAUTIC_BASE_URL}/api/contacts?search=mobile:{phone}"
-    response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
-    if response.status_code == 200:
+    phone_encoded = urllib.parse.quote(phone, safe='')
+    url = f"{MAUTIC_BASE_URL}/api/contacts?where[0][col]=mobile&where[0][expr]=eq&where[0][val]={phone_encoded}"
+    try:
+        response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
+        response.raise_for_status()
         data = response.json()
         contacts = data.get("contacts", {})
         if contacts:
             # Toma el primer contacto encontrado
             first_contact = next(iter(contacts.values()))
             return first_contact
+    except requests.RequestException as e:
+        print(f"Error al buscar contacto por teléfono: {e}")
     return None
 
 def extract_field(contact, field):
@@ -78,12 +83,13 @@ def update_contact_in_mautic(contact_id, update_data):
     """
     url = f"{MAUTIC_BASE_URL}/api/contacts/{contact_id}/edit"
     headers = {'Content-Type': 'application/json'}
-    response = requests.patch(url, json=update_data, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
-    if response.status_code in [200, 204]:
+    try:
+        response = requests.patch(url, json=update_data, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
+        response.raise_for_status()
         print(f"Contacto {contact_id} actualizado con: {update_data}")
         return True
-    else:
-        print(f"Error al actualizar contacto {contact_id}: {response.text}")
+    except requests.RequestException as e:
+        print(f"Error al actualizar contacto {contact_id}: {e}")
         return False
 
 def create_contact_in_mautic(new_contact):
@@ -94,15 +100,15 @@ def create_contact_in_mautic(new_contact):
     """
     url = f"{MAUTIC_BASE_URL}/api/contacts/new"
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, json=new_contact, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
-    
-    if response.status_code in [200, 201]:
+    try:
+        response = requests.post(url, json=new_contact, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
+        response.raise_for_status()
         contact_info = response.json().get("contact", {})
         contact_id = contact_info.get("id")
         print(f"Contacto creado: {new_contact['email']} (ID: {contact_id})")
         return True
-    else:
-        print(f"Error al crear contacto {new_contact.get('email')}: {response.text}")
+    except requests.RequestException as e:
+        print(f"Error al crear contacto {new_contact.get('email')}: {e}")
         return False
 
 def process_contact(json_contact, stats):
