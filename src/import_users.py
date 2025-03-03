@@ -18,9 +18,8 @@ field_mapping = {
     "city": "primary_address_city"
 }
 
-def get_contact_by_phone(phone):
-    phone_encoded = urllib.parse.quote(phone, safe='')
-    url = f"{MAUTIC_BASE_URL}/api/contacts?where[0][col]=mobile&where[0][expr]=eq&where[0][val]={phone_encoded}"
+def get_contact_by_mail(mail):
+    url = f"{MAUTIC_BASE_URL}/api/contacts?where[0][col]=email&where[0][expr]=eq&where[0][val]={mail}"
     try:
         response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
         response.raise_for_status()
@@ -30,7 +29,7 @@ def get_contact_by_phone(phone):
             first_contact = next(iter(contacts.values()))
             return first_contact
     except requests.RequestException as e:
-        print(f"Error al buscar contacto por teléfono: {e}")
+        print(f"Error al buscar contacto por mail: {e}")
     return None
 
 def extract_field(contact, field):
@@ -94,8 +93,12 @@ def get_segment_by_name(segment_name):
         response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
         response.raise_for_status()
         data = response.json()
-        segments = data.get("lists", {})
-        for seg in segments.values():
+        lists_data = data.get("lists", [])
+        if isinstance(lists_data, dict):
+            segments = list(lists_data.values())
+        else:
+            segments = lists_data  
+        for seg in segments:
             if seg.get("name") == segment_name:
                 return seg.get("id")
     except requests.RequestException as e:
@@ -136,16 +139,16 @@ def process_contact(json_contact, stats, clima_contacts):
     for mautic_field, json_field in field_mapping.items():
         new_contact_data[mautic_field] = json_contact.get(json_field)
     
-    phone = new_contact_data.get("mobile")
-    if not phone:
-        print("No se encontró número de celular, omitiendo contacto.")
+    mail = new_contact_data.get("email")
+    if not mail:
+        print("No se encontró correo, omitiendo contacto.")
         stats["error"] += 1
         return
     
     # Verificar si el contacto está interesado en el boletín de clima
     interested = normalize_value("climabulletin", new_contact_data.get("climabulletin"))
     
-    existing_contact = get_contact_by_phone(phone)
+    existing_contact = get_contact_by_mail(mail)
     if existing_contact:
         differences = {}
         for mautic_field, json_field in field_mapping.items():
@@ -165,7 +168,7 @@ def process_contact(json_contact, stats, clima_contacts):
             else:
                 stats["error"] += 1
         else:
-            print(f"Contacto con móvil {phone} ya está actualizado; no se requiere acción.")
+            print(f"Contacto con correo {mail} ya está actualizado; no se requiere acción.")
             stats["existing"] += 1
             if interested is True:
                 clima_contacts.append(existing_contact.get("id"))
