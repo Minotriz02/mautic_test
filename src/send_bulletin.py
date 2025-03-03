@@ -112,9 +112,9 @@ def send_sms_notifications():
 
 # Main que invoca el envío de email y SMS
 def send_clima_bulletin():
-    # print("Iniciando el envío del boletín de clima...")
-    # print("\nEnviando boletín por Email:")
-    # send_weather_emails()
+    print("Iniciando el envío del boletín de clima...")
+    print("\nEnviando boletín por Email:")
+    send_weather_emails()
     print("\nEnviando boletín por SMS:")
     send_sms_notifications()
 

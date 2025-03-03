@@ -4,8 +4,8 @@ import urllib.parse
 
 # Configuración de la API de Mautic
 MAUTIC_BASE_URL = 'http://localhost:8080'  # URL de tu instancia de Mautic
-MAUTIC_USERNAME = 'mautic'  # Usuario configurado para la API en Mautic
-MAUTIC_PASSWORD = 'Khiara1919;'  # Contraseña para la API
+MAUTIC_USERNAME = 'mautic'                # Usuario configurado para la API en Mautic
+MAUTIC_PASSWORD = 'Khiara1919;'           # Contraseña para la API
 
 # Mapeo de campos: clave = campo en Mautic, valor = campo en el JSON
 field_mapping = {
@@ -19,10 +19,6 @@ field_mapping = {
 }
 
 def get_contact_by_phone(phone):
-    """
-    Busca un contacto en Mautic utilizando el campo 'mobile' (celular).
-    Se utiliza el parámetro 'where' de la API para filtrar por mobile.
-    """
     phone_encoded = urllib.parse.quote(phone, safe='')
     url = f"{MAUTIC_BASE_URL}/api/contacts?where[0][col]=mobile&where[0][expr]=eq&where[0][val]={phone_encoded}"
     try:
@@ -31,7 +27,6 @@ def get_contact_by_phone(phone):
         data = response.json()
         contacts = data.get("contacts", {})
         if contacts:
-            # Toma el primer contacto encontrado
             first_contact = next(iter(contacts.values()))
             return first_contact
     except requests.RequestException as e:
@@ -39,10 +34,6 @@ def get_contact_by_phone(phone):
     return None
 
 def extract_field(contact, field):
-    """
-    Extrae el valor de un campo dado del contacto.
-    Primero busca en 'core' y si no lo encuentra, en 'custom'.
-    """
     fields = contact.get("fields", {})
     core_val = fields.get("core", {}).get(field, {}).get("value")
     if core_val is not None:
@@ -50,13 +41,7 @@ def extract_field(contact, field):
     return fields.get("custom", {}).get(field, {}).get("value")
 
 def normalize_value(field, value):
-    """
-    Normaliza el valor para comparación.
-    Para campos booleanos, convierte diversas representaciones a True/False.
-    Para otros campos, devuelve el valor como cadena sin espacios adicionales.
-    """
     if field in ["forecastbulletin", "climabulletin"]:
-        # Normalizar valores booleanos: 
         if isinstance(value, bool):
             return value
         if isinstance(value, int):
@@ -67,37 +52,25 @@ def normalize_value(field, value):
                 return True
             elif val in ['false', '0', 'no']:
                 return False
-            # Si no se reconoce, se devuelve como está
             return val
         return False
-    # Para otros campos
     if value is None:
         return ""
     return str(value).strip()
 
 def update_contact_in_mautic(contact_id, update_data):
-    """
-    Actualiza un contacto en Mautic con los datos proporcionados.
-    Se utiliza el endpoint /api/contacts/{id}/edit con el método PATCH.
-    Devuelve True si la actualización fue exitosa o False en caso de error.
-    """
     url = f"{MAUTIC_BASE_URL}/api/contacts/{contact_id}/edit"
     headers = {'Content-Type': 'application/json'}
     try:
         response = requests.patch(url, json=update_data, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
         response.raise_for_status()
         print(f"Contacto {contact_id} actualizado con: {update_data}")
-        return True
+        return contact_id
     except requests.RequestException as e:
         print(f"Error al actualizar contacto {contact_id}: {e}")
-        return False
+        return None
 
 def create_contact_in_mautic(new_contact):
-    """
-    Crea un nuevo contacto en Mautic con los datos proporcionados.
-    Considera códigos 200 y 201 como éxitos.
-    Devuelve True si se creó correctamente o False en caso de error.
-    """
     url = f"{MAUTIC_BASE_URL}/api/contacts/new"
     headers = {'Content-Type': 'application/json'}
     try:
@@ -106,21 +79,59 @@ def create_contact_in_mautic(new_contact):
         contact_info = response.json().get("contact", {})
         contact_id = contact_info.get("id")
         print(f"Contacto creado: {new_contact['email']} (ID: {contact_id})")
-        return True
+        return contact_id
     except requests.RequestException as e:
         print(f"Error al crear contacto {new_contact.get('email')}: {e}")
+        return None
+
+def get_segment_by_name(segment_name):
+    """
+    Busca en Mautic si ya existe un segmento con el nombre dado.
+    Retorna el ID del segmento si lo encuentra o None en caso contrario.
+    """
+    url = f"{MAUTIC_BASE_URL}/api/segments"
+    try:
+        response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
+        response.raise_for_status()
+        data = response.json()
+        segments = data.get("lists", {})
+        for seg in segments.values():
+            if seg.get("name") == segment_name:
+                return seg.get("id")
+    except requests.RequestException as e:
+        print(f"Error al obtener segmentos: {e}")
+    return None
+
+def create_segment(segment_name):
+    url = f"{MAUTIC_BASE_URL}/api/segments/new"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "name": segment_name,
+        "description": "Segmento de contactos interesados en el boletín de clima"
+    }
+    try:
+        response = requests.post(url, json=payload, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
+        response.raise_for_status()
+        segment_info = response.json().get("list", {})
+        segment_id = segment_info.get("id")
+        print(f"Segmento creado: {segment_name} (ID: {segment_id})")
+        return segment_id
+    except requests.RequestException as e:
+        print(f"Error al crear segmento {segment_name}: {e}")
+        return None
+
+def add_contact_to_segment(segment_id, contact_id):
+    url = f"{MAUTIC_BASE_URL}/api/segments/{segment_id}/contact/{contact_id}/add"
+    try:
+        response = requests.post(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
+        response.raise_for_status()
+        print(f"Contacto {contact_id} agregado al segmento {segment_id}")
+        return True
+    except requests.RequestException as e:
+        print(f"Error al agregar contacto {contact_id} al segmento {segment_id}: {e}")
         return False
 
-def process_contact(json_contact, stats):
-    """
-    Procesa un único contacto:
-      - Mapea los campos del JSON a los de Mautic.
-      - Busca el contacto por celular.
-      - Si existe, compara los campos y actualiza solo los que han cambiado.
-      - Si no existe, crea el contacto.
-    Actualiza las estadísticas en el diccionario 'stats'.
-    """
-    # Construir los datos para Mautic a partir del mapeo
+def process_contact(json_contact, stats, clima_contacts):
     new_contact_data = {}
     for mautic_field, json_field in field_mapping.items():
         new_contact_data[mautic_field] = json_contact.get(json_field)
@@ -130,11 +141,13 @@ def process_contact(json_contact, stats):
         print("No se encontró número de celular, omitiendo contacto.")
         stats["error"] += 1
         return
-
+    
+    # Verificar si el contacto está interesado en el boletín de clima
+    interested = normalize_value("climabulletin", new_contact_data.get("climabulletin"))
+    
     existing_contact = get_contact_by_phone(phone)
     if existing_contact:
         differences = {}
-        # Comparar cada campo: se normalizan los valores antes de comparar
         for mautic_field, json_field in field_mapping.items():
             new_value = json_contact.get(json_field)
             existing_value = extract_field(existing_contact, mautic_field)
@@ -144,25 +157,28 @@ def process_contact(json_contact, stats):
                 differences[mautic_field] = new_value
         if differences:
             contact_id = existing_contact.get("id")
-            if update_contact_in_mautic(contact_id, differences):
+            updated_id = update_contact_in_mautic(contact_id, differences)
+            if updated_id:
                 stats["updated"] += 1
+                if interested is True:
+                    clima_contacts.append(updated_id)
             else:
                 stats["error"] += 1
         else:
             print(f"Contacto con móvil {phone} ya está actualizado; no se requiere acción.")
             stats["existing"] += 1
+            if interested is True:
+                clima_contacts.append(existing_contact.get("id"))
     else:
-        if create_contact_in_mautic(new_contact_data):
+        new_id = create_contact_in_mautic(new_contact_data)
+        if new_id:
             stats["created"] += 1
+            if interested is True:
+                clima_contacts.append(new_id)
         else:
             stats["error"] += 1
 
 def etl_import_contacts(json_file):
-    """
-    Proceso ETL: extrae los contactos del archivo JSON e importa (o actualiza) cada contacto en Mautic.
-    Al finalizar, imprime un resumen de la operación.
-    """
-    # Estadísticas de procesamiento
     stats = {
         "created": 0,
         "updated": 0,
@@ -170,17 +186,36 @@ def etl_import_contacts(json_file):
         "error": 0
     }
     
+    # Lista para almacenar los IDs de contactos interesados en el boletín de clima
+    clima_contacts = []
+    
     with open(json_file, 'r', encoding='utf-8') as file:
         contacts = json.load(file)
         for contact in contacts:
-            process_contact(contact, stats)
+            process_contact(contact, stats, clima_contacts)
     
-    # Resumen final
     print("\nResumen del proceso ETL:")
     print(f"Contactos creados: {stats['created']}")
     print(f"Contactos actualizados: {stats['updated']}")
     print(f"Contactos sin cambios: {stats['existing']}")
     print(f"Contactos con error: {stats['error']}")
+    
+    # Solo se procede si existen contactos interesados nuevos para agregar
+    if clima_contacts:
+        segment_name = "Interesados en boletin de clima"
+        # Primero verifica si ya existe un segmento con ese nombre
+        segment_id = get_segment_by_name(segment_name)
+        if segment_id:
+            print(f"El segmento '{segment_name}' ya existe (ID: {segment_id}). Se agregarán los nuevos contactos.")
+        else:
+            segment_id = create_segment(segment_name)
+        if segment_id:
+            for contact_id in clima_contacts:
+                add_contact_to_segment(segment_id, contact_id)
+        else:
+            print("No se pudo obtener o crear el segmento.")
+    else:
+        print("No hay contactos nuevos interesados en el boletín de clima para agregar al segmento.")
 
 if __name__ == "__main__":
     etl_import_contacts('users.json')
