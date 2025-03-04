@@ -1,6 +1,5 @@
 import json
 import requests
-import urllib.parse
 
 # Configuración de la API de Mautic
 MAUTIC_BASE_URL = 'http://localhost:8080'  # URL de tu instancia de Mautic
@@ -13,6 +12,7 @@ field_mapping = {
     "lastname": "last_name",
     "email": "mail",
     "mobile": "phone_mobile",
+    "mobilewithoutplus": "phone_mobile_withous_plus",
     "forecastbulletin": "forecast_bulletin",
     "climabulletin": "clima_bulletin",
     "city": "primary_address_city"

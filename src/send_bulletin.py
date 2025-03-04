@@ -1,4 +1,7 @@
 import requests
+import subprocess
+import copy
+from datetime import datetime
 
 # Configuración de la API de Mautic
 MAUTIC_BASE_URL = 'http://localhost:8080'  # URL de tu instancia de Mautic
@@ -6,33 +9,29 @@ MAUTIC_USERNAME = 'mautic'                 # Usuario configurado para la API en 
 MAUTIC_PASSWORD = 'Khiara1919;'            # Contraseña para la API
 
 # ID de los templates configurados en Mautic
-EMAIL_TEMPLATE_ID = 1   # Ajusta este valor al ID correcto de tu template de email
-SMS_TEMPLATE_ID   = 1   # Ajusta este valor al ID correcto de tu template SMS
+EMAIL_TEMPLATE_ID = 1   
+SMS_TEMPLATE_ID   = 1  
+CAMPAIGN_ORIGINAL_ID = 1   
+BASE_CAMPAIGN_NAME = "Campaña Clonada - Envío recurrente"
 
 def get_contacts_with_climabulletin():
     """
     Obtiene los contactos que tienen el campo 'climabulletin' establecido en verdadero.
     Se utiliza el parámetro 'search' de la API para filtrar.
-    Asegúrate de que el alias del campo en Mautic sea 'climabulletin' (o actualízalo si es diferente).
     """
     url = f"{MAUTIC_BASE_URL}/api/contacts?search=climabulletin:1"
     response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
     contacts = []
     if response.status_code == 200:
         data = response.json()
-        # La API retorna los contactos en un diccionario; convertimos a lista.
         contacts = list(data.get("contacts", {}).values())
     else:
         print(f"Error al obtener contactos: {response.text}")
     return contacts
 
-# Envío de Email vía Mautic
 def send_email_via_mautic(contact_id, email_template_id=EMAIL_TEMPLATE_ID):
     """
     Envía el boletín de clima a un contacto mediante el template de email configurado en Mautic.
-    Se utiliza el endpoint:
-      /api/emails/{template_id}/contact/{contact_id}/send
-    El template debe incluir tokens para personalizar (por ejemplo, {contactfield=city} o {contactfield=firstname}).
     """
     url = f"{MAUTIC_BASE_URL}/api/emails/{email_template_id}/contact/{contact_id}/send"
     response = requests.post(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
@@ -45,8 +44,7 @@ def send_email_via_mautic(contact_id, email_template_id=EMAIL_TEMPLATE_ID):
 
 def send_weather_emails():
     """
-    Consulta los contactos que tienen activado el boletín de clima (climabulletin=true) y les envía el email.
-    Al finalizar, muestra un resumen del envío.
+    Consulta los contactos que tienen activado el boletín de clima y les envía el email.
     """
     contacts = get_contacts_with_climabulletin()
     sent_count = 0
@@ -67,18 +65,12 @@ def send_weather_emails():
     print(f"Emails enviados: {sent_count}")
     print(f"Errores: {error_count}")
 
-# Envío de SMS vía Mautic (usando integración con Twilio)
 def send_sms_via_mautic(contact_id, sms_template_id=SMS_TEMPLATE_ID):
     """
     Envía un SMS a un contacto mediante el template SMS configurado en Mautic.
-    Se utiliza el endpoint:
-      /api/smses/{sms_template_id}/contact/{contact_id}/send
-    Este endpoint funciona si ya has configurado en Mautic la integración con Twilio.
     """
     url = f"{MAUTIC_BASE_URL}/api/smses/{sms_template_id}/contact/{contact_id}/send"
-    print(url)
     response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
-    print(response.text)
     if response.status_code == 200:
         print(f"SMS enviado al contacto {contact_id}")
         return True
@@ -88,8 +80,7 @@ def send_sms_via_mautic(contact_id, sms_template_id=SMS_TEMPLATE_ID):
 
 def send_sms_notifications():
     """
-    Consulta los contactos que tienen activado el boletín de clima (climabulletin=true) y les envía un SMS.
-    Al finalizar, muestra un resumen del envío.
+    Consulta los contactos que tienen activado el boletín de clima y les envía un SMS.
     """
     contacts = get_contacts_with_climabulletin()
     sent_count = 0
@@ -110,13 +101,79 @@ def send_sms_notifications():
     print(f"SMS enviados: {sent_count}")
     print(f"Errores: {error_count}")
 
-# Main que invoca el envío de email y SMS
+def get_campaign(campaign_id):
+    """
+    Obtiene la configuración de la campaña original.
+    """
+    url = f"{MAUTIC_BASE_URL}/api/campaigns/{campaign_id}"
+    response = requests.get(url, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
+    if response.status_code == 200:
+        return response.json()  # Se espera que la respuesta tenga la configuración de la campaña
+    else:
+        print(f"Error al obtener la campaña {campaign_id}: {response.text}")
+        return None
+
+def clone_campaign(original_campaign_id, base_campaign_name):
+    """
+    Clona la campaña original con un nuevo nombre que incluye la hora actual.
+    Nota: Es posible que debas ajustar la estructura del JSON según tu versión de Mautic.
+    """
+    original_data = get_campaign(original_campaign_id)
+    if not original_data:
+        print("No se pudo obtener la campaña original.")
+        return None
+
+    # Copia la configuración de la campaña
+    new_campaign_data = copy.deepcopy(original_data.get("campaign", {}))
+
+    # Quitar campos que no se deben clonar
+    new_campaign_data.pop("id", None)
+    new_campaign_data.pop("dateAdded", None)
+    new_campaign_data.pop("dateModified", None)
+    
+    # Asigna un nuevo nombre incluyendo la hora actual
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    new_campaign_data["name"] = f"{base_campaign_name} - {current_time}"
+    
+    # Endpoint para crear una nueva campaña (verifica en tu Mautic la ruta correcta)
+    url = f"{MAUTIC_BASE_URL}/api/campaigns/new"
+    response = requests.post(url, json=new_campaign_data, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD))
+    if response.status_code in [200, 201]:
+        print("Campaña clonada exitosamente.")
+        return response.json()
+    else:
+        print(f"Error al clonar la campaña: {response.text}")
+        return None
+
+def trigger_campaigns():
+    """
+    Ejecuta los comandos CLI de Mautic para actualizar segmentos, campañas y disparar las campañas.
+    Es necesario que el script tenga acceso al comando docker y que el contenedor de Mautic se llame 'mautic'.
+    """
+    try:
+        print("Actualizando segmentos...")
+        subprocess.run(["docker", "exec", "mautic", "php", "/var/www/html/bin/console", "mautic:segments:update"], check=True)
+        print("Actualizando campañas...")
+        subprocess.run(["docker", "exec", "mautic", "php", "/var/www/html/bin/console", "mautic:campaigns:update"], check=True)
+        print("Disparando campañas...")
+        subprocess.run(["docker", "exec", "mautic", "php", "/var/www/html/bin/console", "mautic:campaigns:trigger"], check=True)
+        print("Campañas disparadas con éxito.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error al ejecutar comando: {e}")
+
 def send_clima_bulletin():
+    """
+    Ejecuta el envío del boletín de clima vía email y SMS, y luego dispara la campaña de Mautic.
+    """
     print("Iniciando el envío del boletín de clima...")
     print("\nEnviando boletín por Email:")
     send_weather_emails()
     print("\nEnviando boletín por SMS:")
     send_sms_notifications()
+    print("\nCreando campaña de boletin de clima...")
+    clone_campaign(CAMPAIGN_ORIGINAL_ID, BASE_CAMPAIGN_NAME)
+    print("\nEjecutando comandos de campaña en Mautic...")
+    trigger_campaigns()
 
 if __name__ == "__main__":
     send_clima_bulletin()

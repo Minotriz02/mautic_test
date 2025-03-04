@@ -25,5 +25,12 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    ports:
+      - "3000:3000/tcp"
+    restart: unless-stopped
+
 volumes:
   db_data:
