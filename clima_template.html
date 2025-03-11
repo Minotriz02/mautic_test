@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Boletín Climático</title>
+    <style>
+      .location2:has(> div > .temperature2:empty) {
+        display: none !important;
+      }
+
+      /* Ocultar contenido vacío con espacios */
+      .temperature2:empty::after {
+        content: "";
+        display: none;
+      }
+    </style>
   </head>
   <body
     style="
@@ -39,7 +50,7 @@
         <p style="color: #7f8c8d; margin: 0; font-size: 14px">Asbama</p>
       </div>
 
-      <!-- Estado actual -->
+      <!-- Primer lugar -->
       <div style="text-align: center; margin-bottom: 30px">
         <div style="font-size: 24px; color: #e67e22; margin-bottom: 10px">
           Soleado
@@ -52,11 +63,33 @@
             margin-bottom: 15px;
           "
         >
-          28°C
+          <span>{contactfield=temperature1}</span>C
         </div>
         <div style="color: #95a5a6; font-size: 14px">
-          Jueves 11-07-2024<br />
-          Santiago de Cali
+          {contactfield=datenow}<br />
+          {contactfield=city1}
+        </div>
+      </div>
+
+      <!-- Segundo lugar (se oculta si temperature2 está vacío) -->
+      <div class="location2" style="text-align: center; margin-bottom: 30px">
+        <div style="font-size: 24px; color: #e67e22; margin-bottom: 10px">
+          Soleado
+        </div>
+        <div
+          style="
+            font-size: 48px;
+            color: #e67e22;
+            font-weight: bold;
+            margin-bottom: 15px;
+          "
+        >
+          <span class="temperature2">{contactfield=temperature2}</span>C
+        </div>
+        <!-- Sin espacios dentro -->
+        <div style="color: #95a5a6; font-size: 14px">
+          {contactfield=datenow}<br />
+          {contactfield=city2}
         </div>
       </div>
 
@@ -80,7 +113,6 @@
           <div style="color: #7f8c8d; font-size: 12px">Temperatura</div>
           <div style="color: #2c3e50; font-weight: bold">25°C - 30°C</div>
         </div>
-
         <div
           style="
             padding: 12px;
@@ -92,7 +124,6 @@
           <div style="color: #7f8c8d; font-size: 12px">Precipitación</div>
           <div style="color: #2c3e50; font-weight: bold">18.5mm</div>
         </div>
-
         <div
           style="
             padding: 12px;
@@ -104,7 +135,6 @@
           <div style="color: #7f8c8d; font-size: 12px">Radiación Solar</div>
           <div style="color: #2c3e50; font-weight: bold">21.4MJ</div>
         </div>
-
         <div
           style="
             padding: 12px;

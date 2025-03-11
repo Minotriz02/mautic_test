@@ -16,7 +16,7 @@
     "phone_mobile_withous_plus": "573176154671",
     "mail": "test2@mail.com",
     "forecast_bulletin": false,
-    "clima_bulletin": true,
+    "clima_bulletin": false,
     "primary_address_city": "Cali, Colombia"
   },
   {
@@ -57,6 +57,7 @@
     "mail": "sebaslopezastu08@gmail.com",
     "forecast_bulletin": false,
     "clima_bulletin": true,
-    "primary_address_city": "Bogotá, Colombia"
+    "primary_address_city": "Bogotá, Colombia",
+    "city2": "Cali, Colombia"
   }
 ]

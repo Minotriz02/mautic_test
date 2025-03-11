@@ -15,7 +15,8 @@ field_mapping = {
     "mobilewithoutplus": "phone_mobile_withous_plus",
     "forecastbulletin": "forecast_bulletin",
     "climabulletin": "clima_bulletin",
-    "city": "primary_address_city"
+    "city": "primary_address_city",
+    "city2": "city2"
 }
 
 def get_contact_by_mail(mail):
