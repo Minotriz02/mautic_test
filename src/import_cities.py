@@ -35,10 +35,10 @@ def get_weather_from_lat_lon(lat, lon):
         return temperature, date_now
     return None, None
 
-def company_exists(company_name):
+def get_company_by_name(company_name):
     """
     Consulta en Mautic si ya existe una compañía con el nombre (ciudad) especificado.
-    Se realiza una búsqueda a través de la API de companies.
+    Retorna el ID de la compañía si la encuentra, o None en caso contrario.
     """
     url = f"{MAUTIC_BASE_URL}/api/companies?where[0][col]=companyname&where[0][expr]=eq&where[0][val]={company_name}"
     try:
@@ -46,16 +46,15 @@ def company_exists(company_name):
         response.raise_for_status()
         data = response.json()
         companies = data.get("companies", {})
-        # Se itera sobre las companies para encontrar una que tenga el mismo nombre en el campo core.name
         for comp in companies.values():
-            comp_name = comp.get("fields", {}).get("core", {}).get("name", {}).get("value")
+            comp_name = comp.get("fields", {}).get("core", {}).get("companyname", {}).get("value")
             if comp_name and comp_name.strip().lower() == company_name.strip().lower():
-                return True
+                return comp.get("id")
     except requests.RequestException as e:
         print(f"Error al buscar company '{company_name}': {e}")
-    return False
+    return None
 
-def create_company(company_name, weather):
+def create_company(company_name, weather, date_now):
     """
     Crea una nueva compañía en Mautic con el nombre de la ciudad y el atributo "weather".
     Se asume que en Mautic existe un campo (posiblemente custom) llamado "weather".
@@ -64,7 +63,8 @@ def create_company(company_name, weather):
     headers = {'Content-Type': 'application/json'}
     payload = {
         "companyname": company_name,
-        "weather": weather  # Este campo debe existir o estar mapeado en Mautic
+        "weather": weather,
+        "datenow1": date_now
     }
     try:
         response = requests.post(url, json=payload, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
@@ -77,12 +77,31 @@ def create_company(company_name, weather):
         print(f"Error al crear company '{company_name}': {e}")
         return None
 
+def update_company(company_id, weather, date_now):
+    """
+    Actualiza el campo "weather" de una compañía ya existente en Mautic.
+    """
+    url = f"{MAUTIC_BASE_URL}/api/companies/{company_id}/edit"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "weather": weather,
+        "datenow1": date_now
+    }
+    try:
+        response = requests.patch(url, json=payload, auth=(MAUTIC_USERNAME, MAUTIC_PASSWORD), headers=headers)
+        response.raise_for_status()
+        print(f"Company (ID: {company_id}) actualizada con weather: {weather}")
+        return company_id
+    except requests.RequestException as e:
+        print(f"Error al actualizar company (ID: {company_id}): {e}")
+        return None
+
 def etl_import_cities():
     """
     Lee el archivo JSON de usuarios, extrae las ciudades (companies) únicas y para cada una:
       - Verifica si ya existe en Mautic.
-      - Si no existe, obtiene coordenadas y clima actual.
-      - Crea la compañía en Mautic con el atributo 'weather'.
+         - Si existe, obtiene las nuevas coordenadas, consulta el clima y actualiza el campo "weather".
+         - Si no existe, obtiene coordenadas y clima actual y crea la compañía en Mautic.
     """
     users_file = 'users.json'
     unique_cities = set()
@@ -101,17 +120,19 @@ def etl_import_cities():
     for city in unique_cities:
         print(city)
     
-    # Procesar cada ciudad: obtener clima y crear company si no existe
+    # Procesar cada ciudad: obtener clima y crear o actualizar la company en Mautic
     for city in unique_cities:
-        if company_exists(city):
-            print(f"La compañía para la ciudad '{city}' ya existe. Se omite la creación.")
-        else:
-            lat, lon = get_lat_lon_from_city(city)
-            if lat and lon:
-                weather, date_now = get_weather_from_lat_lon(lat, lon)
-                if weather is not None:
-                    create_company(city, weather)
+        lat, lon = get_lat_lon_from_city(city)
+        if lat and lon:
+            weather, date_now = get_weather_from_lat_lon(lat, lon)
+            if weather is not None:
+                company_id = get_company_by_name(city)
+                if company_id:
+                    print(f"La compañía para la ciudad '{city}' ya existe. Se actualizará el weather.")
+                    update_company(company_id, weather, date_now)
                 else:
-                    print(f"No se pudo obtener el clima para la ciudad '{city}'.")
+                    create_company(city, weather, date_now)
             else:
-                print(f"No se pudieron obtener coordenadas para la ciudad '{city}'.")
+                print(f"No se pudo obtener el clima para la ciudad '{city}'.")
+        else:
+            print(f"No se pudieron obtener coordenadas para la ciudad '{city}'.")
