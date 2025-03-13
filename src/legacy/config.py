@@ -1,3 +1,4 @@
+# config.py
 MAUTIC_BASE_URL = 'http://localhost:8080'
 MAUTIC_USERNAME = 'mautic'
 MAUTIC_PASSWORD = 'Khiara1919;'

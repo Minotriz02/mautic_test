@@ -1,23 +1,21 @@
 # main.py
-from email_sender import send_weather_emails
-from sms_sender import send_sms_notifications
-from campaign_module import clone_campaign, trigger_campaigns
 from config import CAMPAIGN_ORIGINAL_ID, BASE_CAMPAIGN_NAME
+from import_contacts import etl_import_contacts
+from import_cities import etl_import_cities
+from create_segments import process_segments
+
 
 def send_clima_bulletin():
-    print("Iniciando el envío del boletín de clima...")
+    print("Iniciando proceso...")
     
-    print("\nEnviando boletín por Email:")
-    send_weather_emails()
-    
-    # print("\nEnviando boletín por SMS:")
-    # send_sms_notifications()
-    
-    # print("\nCreando campaña de boletin de clima:")
-    # clone_campaign(CAMPAIGN_ORIGINAL_ID, BASE_CAMPAIGN_NAME)
-    
-    # print("\nEjecutando comandos de campaña en Mautic:")
-    # trigger_campaigns()
+    print("\nImportando contactos:")
+    etl_import_contacts()
+
+    print("\nImportando ciudades:")
+    etl_import_cities()
+
+    print("\nCreando segmentos:")
+    process_segments()
 
 if __name__ == "__main__":
     send_clima_bulletin()
