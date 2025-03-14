@@ -127,9 +127,7 @@ def process_segments():
                 # Se asume que las ciudades están separadas por guiones ("-")
                 city_list = [city.strip() for city in cities_str.split("-") if city.strip()]
                 for city in city_list:
-                    # Extraer solo el nombre de la ciudad (parte antes de la coma)
-                    city_name = city.split(",")[0].strip() if "," in city else city
-                    segment_name = f"Boletin clima - {city_name}"
+                    segment_name = f"Boletin clima - {city}"
                     # Verificar si el segmento ya existe, de lo contrario se crea
                     segment_id = get_segment_by_name(segment_name)
                     if not segment_id:
