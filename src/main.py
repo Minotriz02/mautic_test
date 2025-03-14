@@ -2,6 +2,7 @@ from import_contacts import etl_import_contacts
 from create_segments import process_segments
 from create_mails import create_email_templates
 from create_sms import create_sms_templates
+from generate_images import create_images_bulletin
 from create_campaigns import create_campaigns
 from send_campaigns import trigger_campaigns
 
@@ -20,6 +21,9 @@ def send_clima_bulletin():
 
     print("\nCreando text messages:")
     create_sms_templates()
+
+    print("\nGenerando imagenes de los boletines:")
+    create_images_bulletin()
 
     print("\nCreando campaña:")
     create_campaigns()
